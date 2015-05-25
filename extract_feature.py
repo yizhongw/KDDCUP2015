@@ -9,21 +9,61 @@ with open("data/map/objectmap", 'r') as f:
 op_map = {"nagivate":0, "access":1, "problem":2, "page_close":3, "discussion":4, "video":5, "wiki":6}
 op_clsnum = len(op_map)
 
-user_st = 0
-course_st = len(usermap)
-obj_st = course_st + len(coursemap)
+user_dropout_prior = {}
+course_dropout_prior = {}
 
-print user_st, course_st, obj_st
 
 def todate(s):
 	y,m,d = s.split('-')
 	return datetime.date(int(y),int(m),int(d))
 
+def calculate_prior_dropout():
+	truth_file = open("data/clean/truth_train.csv")
+	enrollment_file = open("data/clean/enrollment_train.csv")
+	enrollment_truth = {}
+	user_truth_cnt = {}
+	course_truth_cnt = {}
+	for line in truth_file:
+		enroll_id, truth = line.strip().split(',')
+		enrollment_truth[enroll_id] = int(truth)
+	for line in enrollment_file:
+		enroll_id, user_id, course_id = line.strip().split(',')
+		if(int(enroll_id) % 200 == 0):
+			print enroll_id
+		if(enrollment_truth[enroll_id]):
+		# 	if(user_id in user_truth_cnt.keys()):
+		# 		user_truth_cnt[user_id][1] += 1
+		# 	else:
+		# 		user_truth_cnt[user_id] = [0,1]
+			if(course_id in course_truth_cnt.keys()):
+		 		course_truth_cnt[course_id][1] += 1
+		 	else:
+		 		course_truth_cnt[course_id] = [0,1]
+		else:
+			# if(user_id in user_truth_cnt.keys()):
+			# 	user_truth_cnt[user_id][0] += 1
+			# else:
+			# 	user_truth_cnt[user_id] = [1,0]
+			if(course_id in course_truth_cnt.keys()):
+				course_truth_cnt[course_id][0] += 1
+			else:
+				course_truth_cnt[course_id] = [1,0]
+	# for user_id in user_truth_cnt.keys():
+	# 	user_dropout_prior[int(user_id)] = float(user_truth_cnt[user_id][1])/(user_truth_cnt[user_id][0]+user_truth_cnt[user_id][1])
+	for course_id in course_truth_cnt.keys():
+		course_dropout_prior[int(course_id)] = float(course_truth_cnt[course_id][1])/(course_truth_cnt[course_id][0]+course_truth_cnt[course_id][1])
+	# print user_dropout_prior
+	# print course_dropout_prior
+	# with open("data/feature/user_dropout_rate",'w') as f:
+	# 	pickle.dump(user_dropout_rate, f)
+	# with open("data/feature/course_dropout_rate",'w') as f:
+	# 	pickle.dump(course_dropout_rate, f)
+
 def extract_feature(logcol):
 	logs = [line.strip().split(',') for line in logcol]
 	operation_num = len(logs)
-	userid = int(logs[0][1])
-	courseid = int(logs[0][2])
+	user_id = int(logs[0][1])
+	course_id = int(logs[0][2])
 	objs = set([int(l[6]) for l in logs])
 	last_obj = int(logs[-1][6])  # the last operated object
 	#print logs[-1]
@@ -32,11 +72,11 @@ def extract_feature(logcol):
 
 	feature_str = ""
 	"""
-	feature_str += "%d:1" % (userid+st_index,)
+	feature_str += "%d:1" % (user_id+st_index,)
 	st_index += len(usermap)
 	
 
-	feature_str += " %d:1" % (courseid+st_index,)
+	feature_str += " %d:1" % (course_id+st_index,)
 	st_index += len(coursemap)
 	
 	feature_str += "".join([" %d:1" % (objid+st_index,) for objid in sorted(objs)])
@@ -72,25 +112,42 @@ def extract_feature(logcol):
 		feature_str += " %d:%d" % (op_id+st_index, op_num[op_id])            # num of 7 operations
 	st_index += op_clsnum
 
-	for op_id in range(op_clsnum):
-		feature_str += " %d:%d" % (op_id+st_index, server_op_num[op_id])     # num of 7 operations from server
-	st_index += op_clsnum
+	# for op_id in range(op_clsnum):
+	# 	feature_str += " %d:%d" % (op_id+st_index, server_op_num[op_id])     # num of 7 operations from server
+	# st_index += op_clsnum
 
-	for op_id in range(op_clsnum):
-		feature_str += " %d:%d" % (op_id+st_index, browser_op_num[op_id])    # num of 7 operations from browser
-	st_index += op_clsnum
+	# for op_id in range(op_clsnum):
+	# 	feature_str += " %d:%d" % (op_id+st_index, browser_op_num[op_id])    # num of 7 operations from browser
+	# st_index += op_clsnum
 
-	feature_str + " %d:%d" % (st_index, log_days)                            # active days
+	feature_str += " %d:%d" % (st_index, log_days)                            # active days
 	st_index += 1
 
 	feature_str += " %d:%d" % (st_index, log_datespan)                       # active time span
+	st_index += 1
+
+	# if(user_id in user_dropout_prior.keys()):
+	# 	user_dropout_rate = user_dropout_prior[user_id]
+	# else:
+	# 	user_dropout_rate = 0
+	# 	print user_id
+	# feature_str += " %d:%f" % (st_index, user_dropout_rate)
+	# st_index += 1
+
+	course_dropout_rate = course_dropout_prior[course_id]
+
+	# if(course_id in course_dropout_prior.keys()):
+	# 	course_dropout_rate = course_dropout_prior[course_id]
+	# else:
+	# 	course_dropout_rate = 0
+	# 	print course_id
+	feature_str += " %d:%f" % (st_index, course_dropout_rate)
 	st_index += 1
 
 	return feature_str
 
 def extract_file(logfile):
 	fin = open(logfile,'r')	
-
 	prev_eid = ""
 	col = []
 	feature_dic = {}
@@ -113,6 +170,7 @@ def extract_file(logfile):
 	return feature_dic
 
 def write_train(truthfile,feature_dic,outputfile):
+	print "Wrinting train file feature....."
 	fin = open(truthfile)
 	fout = open(outputfile,'w')
 	
@@ -127,6 +185,7 @@ def write_train(truthfile,feature_dic,outputfile):
 	fout.close()
 
 def write_test(testfile, feature_dic, outputfile):
+	print "Wrinting test file feature....."
 	fin = open(testfile)
 	fout = open(outputfile,'w')
 	for line in fin:
@@ -140,8 +199,13 @@ def write_test(testfile, feature_dic, outputfile):
 	fout.close()	
 
 if __name__=="__main__":
+	print "Calculating prior dropout rate...."
+	calculate_prior_dropout()
+
+	print "Extracting train file feature...."
 	feature_dic = extract_file("data/clean/log_train.csv",)
 	write_train("data/clean/truth_train.csv", feature_dic, "data/feature/train")
 
+	print "Extracting test file feature...."
 	feature_dic = extract_file("data/clean/log_test.csv")
 	write_test("data/clean/enrollment_test.csv", feature_dic, "data/feature/test")
