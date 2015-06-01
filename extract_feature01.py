@@ -77,7 +77,6 @@ def extract_feature(logcol):
     #timespan.append((active_time[-1]-active_time[0]).hours);      #everyday time span for one user
     delta_time = extract_time(log_date,active_time);
     active_hour[log_date] = (delta_time);
-    '''
     #all[1..7]+server[1..7]+browser[1..7]
     for op_id in range(op_clsnum):    ##all
         feature_str += ' %d:%d'%(st_index,op_num[op_id])
@@ -88,7 +87,6 @@ def extract_feature(logcol):
     for op_id in range(op_clsnum):    ##browser
         feature_str += ' %d:%d'%(st_index,browser_op_num[op_id])
         st_index += 1;
-    '''
     logdays = len(set(date_list));
     feature_str += ' %d:%d'%(st_index,logdays);     ##active days
     st_index += 1;
@@ -97,16 +95,13 @@ def extract_feature(logcol):
     log_datespan = (end_date-start_date).days;
     feature_str += ' %d:%d'%(st_index,log_datespan);    ##Time span
     st_index += 1;
-    '''
     feature_str += ' %d:%s'%(st_index,logs[-1][3]);      ##Last visit time
     st_index += 1;
-    '''
     sum = 0;
     for term in active_hour:
         sum += active_hour[term];
     feature_str += ' %d:%f'%(st_index,float(sum)/logdays);        ##average online time
     st_index += 1;
-    '''
     sum = 0;
     for op_id in range(op_clsnum):    ##sum of all
         sum += op_num[op_id];
@@ -148,7 +143,6 @@ def extract_feature(logcol):
     st_index += 1;
     feature_str += ' %d:%f'%(st_index,HoursTrend)     ##Trend of Active Hours
     st_index += 1;
-    '''
     return feature_str
 
 def extract_file(logfile):
