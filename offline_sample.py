@@ -1,7 +1,7 @@
 import random
-fin = open("data/feature/train",'r')
-fo1 = open("data/feature/train_1",'w')
-fo2 = open("data/feature/train_2",'w')
+fin = open("data/feature/train_gh_52_20",'r')
+fo1 = open("data/feature/train_gh_52_20_1",'w')
+fo2 = open("data/feature/train_gh_52_20_2",'w')
 
 for line in fin:
 	if random.uniform(0,1)<0.75:
